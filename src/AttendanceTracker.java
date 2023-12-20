@@ -11,6 +11,15 @@ public class AttendanceTracker {
         employees.put(name, new Employee(name));
     }
 
+    public void addEmployee(String name, boolean present, Date lastClockInTime, Date lastClockOutTime, Map<String, Integer> workHours) {
+        Employee employee = new Employee(name);
+        employee.setPresent(present);
+        employee.setLastClockInTime(lastClockInTime);
+        employee.setLastClockOutTime(lastClockOutTime);
+        employee.setWorkHours(workHours);
+        employees.put(name, employee);
+    }
+
     public void clockIn(String employeeName) {
         Employee employee = getEmployee(employeeName);
         if (employee != null) {

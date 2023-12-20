@@ -59,4 +59,9 @@ public class Employee {
     public void clearWorkHours() {
         workHours.clear();
     }
+
+    public void setWorkHours(Map<String, Integer> workHours) {
+        this.workHours.clear();
+        this.workHours.putAll(workHours);
+    }
 }
