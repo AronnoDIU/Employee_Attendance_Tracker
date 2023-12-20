@@ -31,7 +31,6 @@ public class AttendanceTracker {
 
     public void addEmployee(String name, boolean present, String lastClockInTime, String lastClockOutTime, String workHours) {
         Employee employee = new Employee(
-                name,
                 present,
                 parseDate(lastClockInTime),
                 parseDate(lastClockOutTime),
