@@ -1,3 +1,4 @@
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class AttendanceTracker {
@@ -7,17 +8,39 @@ public class AttendanceTracker {
         this.employees = new HashMap<>();
     }
 
-    public void addEmployee(String name) {
-        employees.put(name, new Employee(name));
-    }
-
-    public void addEmployee(String name, boolean present, Date lastClockInTime, Date lastClockOutTime, Map<String, Integer> workHours) {
+    public void addEmployee(String name, boolean present, String lastClockInTime, String lastClockOutTime, String workHours) {
         Employee employee = new Employee(name);
         employee.setPresent(present);
-        employee.setLastClockInTime(lastClockInTime);
-        employee.setLastClockOutTime(lastClockOutTime);
-        employee.setWorkHours(workHours);
+        employee.setLastClockInTime(parseDate(lastClockInTime));
+        employee.setLastClockOutTime(parseDate(lastClockOutTime));
+        parseWorkHours(workHours, employee);
         employees.put(name, employee);
+    }
+
+    private void parseWorkHours(String workHours, Employee employee) {
+        if (workHours.equalsIgnoreCase("N/A")) {
+            return;
+        }
+        String[] workHoursArray = workHours.split(",");
+        for (String workHour : workHoursArray) {
+            String[] workHourArray = workHour.split(":");
+            String date = workHourArray[0];
+            int hours = Integer.parseInt(workHourArray[1]);
+            employee.addWorkHours(date, hours);
+        }
+    }
+
+    private Date parseDate(String lastClockInTime) {
+        if (lastClockInTime.equalsIgnoreCase("N/A")) {
+            return null;
+        }
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        try {
+            return sdf.parse(lastClockInTime);
+        } catch (Exception e) {
+            System.out.println("Invalid date format: " + lastClockInTime);
+            return null;
+        }
     }
 
     public void clockIn(String employeeName) {
@@ -36,14 +59,6 @@ public class AttendanceTracker {
         Date clockInTime = new Date();
         employee.setLastClockInTime(clockInTime);
         System.out.println("Clocked in at " + clockInTime);
-    }
-
-    private Employee getEmployee(String employeeName) {
-        Employee employee = employees.get(employeeName);
-        if (employee == null) {
-            System.out.println("Employee not found: " + employeeName);
-        }
-        return employee;
     }
 
     public void clockOut(String employeeName) {
@@ -68,25 +83,22 @@ public class AttendanceTracker {
         Employee employee = getEmployee(employeeName);
         if (employee != null) {
             System.out.println("Attendance for " + employeeName + ":");
-            System.out.println("Last Clock In Time: " + employee.getLastClockInTime());
-            System.out.println("Last Clock Out Time: " + employee.getLastClockOutTime());
+            System.out.println("Last Clock In Time: " + formatDate(employee.getLastClockInTime()));
+            System.out.println("Last Clock Out Time: " + formatDate(employee.getLastClockOutTime()));
         }
     }
 
     public void listEmployees() {
         System.out.println("List of Employees:");
-        for (Employee employee : employees.values()) {
-            System.out.println(employee.getName());
-        }
+        employees.keySet().forEach(System.out::println);
     }
 
     public void displayWorkHours(String displayHoursName) {
         Employee employee = getEmployee(displayHoursName);
         if (employee != null) {
             System.out.println("Work hours for " + displayHoursName + ":");
-            for (Map.Entry<String, Integer> entry : employee.getWorkHours().entrySet()) {
-                System.out.println(entry.getKey() + ": " + entry.getValue() + " hours");
-            }
+            employee.getWorkHours().forEach((date, hours) ->
+                    System.out.println(date + ": " + hours + " hours"));
         }
     }
 
@@ -95,14 +107,6 @@ public class AttendanceTracker {
         if (employee != null) {
             employee.addWorkHours(date, hours);
             System.out.println("Work hours added for " + addHoursName + " on " + date + ": " + hours + " hours");
-        }
-    }
-
-    public void removeWorkHours(String removeHoursName, String removeHoursDate) {
-        Employee employee = getEmployee(removeHoursName);
-        if (employee != null) {
-            employee.removeWorkHours(removeHoursDate);
-            System.out.println("Work hours removed for " + removeHoursName + " on " + removeHoursDate);
         }
     }
 
@@ -115,11 +119,7 @@ public class AttendanceTracker {
     }
 
     private int calculateTotalHours(Map<String, Integer> workHours) {
-        int totalHours = 0;
-        for (int hours : workHours.values()) {
-            totalHours += hours;
-        }
-        return totalHours;
+        return workHours.values().stream().mapToInt(Integer::intValue).sum();
     }
 
     public void calculateAverageWorkHours(String calculateAverageHoursName) {
@@ -132,7 +132,7 @@ public class AttendanceTracker {
 
     private double calculateAverageHours(Map<String, Integer> workHours) {
         int totalHours = calculateTotalHours(workHours);
-        return (double) totalHours / workHours.size();
+        return totalHours / (double) workHours.size();
     }
 
     public void calculateTotalWorkHoursForMonth(String calculateTotalHoursMonthName, String calculateTotalHoursMonth) {
@@ -144,15 +144,10 @@ public class AttendanceTracker {
     }
 
     private int calculateTotalHoursForMonth(Map<String, Integer> workHours, String calculateTotalHoursMonth) {
-        int totalHours = 0;
-        for (Map.Entry<String, Integer> entry : workHours.entrySet()) {
-            String date = entry.getKey();
-            int hours = entry.getValue();
-            if (date.startsWith(calculateTotalHoursMonth)) {
-                totalHours += hours;
-            }
-        }
-        return totalHours;
+        return workHours.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith(calculateTotalHoursMonth))
+                .mapToInt(Map.Entry::getValue)
+                .sum();
     }
 
     public void calculateAverageWorkHoursForMonth(String calculateAverageHoursMonthName, String calculateAverageHoursMonth) {
@@ -165,13 +160,10 @@ public class AttendanceTracker {
 
     private double calculateAverageHoursForMonth(Map<String, Integer> workHours, String calculateAverageHoursMonth) {
         int totalHours = calculateTotalHoursForMonth(workHours, calculateAverageHoursMonth);
-        int numDays = 0;
-        for (String date : workHours.keySet()) {
-            if (date.startsWith(calculateAverageHoursMonth)) {
-                numDays++;
-            }
-        }
-        return (double) totalHours / numDays;
+        long numDays = workHours.keySet().stream()
+                .filter(date -> date.startsWith(calculateAverageHoursMonth))
+                .count();
+        return totalHours / (double) numDays;
     }
 
     public void calculateTotalWorkHoursForYear(String calculateTotalHoursYearName, String calculateTotalHoursYear) {
@@ -183,15 +175,10 @@ public class AttendanceTracker {
     }
 
     private int calculateTotalHoursForYear(Map<String, Integer> workHours, String calculateTotalHoursYear) {
-        int totalHoursForYear = 0;
-        for (Map.Entry<String, Integer> entry : workHours.entrySet()) {
-            String date = entry.getKey();
-            int hours = entry.getValue();
-            if (date.startsWith(calculateTotalHoursYear)) {
-                totalHoursForYear += hours;
-            }
-        }
-        return totalHoursForYear;
+        return workHours.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith(calculateTotalHoursYear))
+                .mapToInt(Map.Entry::getValue)
+                .sum();
     }
 
     public void calculateAverageWorkHoursForYear(String calculateAverageHoursYearName, String calculateAverageHoursYear) {
@@ -203,14 +190,11 @@ public class AttendanceTracker {
     }
 
     private double calculateAverageHoursForYear(Map<String, Integer> workHours, String calculateAverageHoursYear) {
-        int totalHoursForYear = calculateTotalHoursForYear(workHours, calculateAverageHoursYear);
-        int numDays = 0;
-        for (String date : workHours.keySet()) {
-            if (date.startsWith(calculateAverageHoursYear)) {
-                numDays++;
-            }
-        }
-        return (double) totalHoursForYear / numDays;
+        int totalHours = calculateTotalHoursForYear(workHours, calculateAverageHoursYear);
+        long numDays = workHours.keySet().stream()
+                .filter(date -> date.startsWith(calculateAverageHoursYear))
+                .count();
+        return totalHours / (double) numDays;
     }
 
     public void removeEmployee(String removeEmployeeName) {
@@ -239,10 +223,10 @@ public class AttendanceTracker {
     }
 
     public void clearAllAttendance() {
-        for (Employee employee : employees.values()) {
+        employees.values().forEach(employee -> {
             employee.setLastClockInTime(null);
             employee.setLastClockOutTime(null);
-        }
+        });
         System.out.println("Attendance cleared for all employees.");
     }
 
@@ -257,9 +241,7 @@ public class AttendanceTracker {
     }
 
     public void clearAllWorkHours() {
-        for (Employee employee : employees.values()) {
-            employee.clearWorkHours();
-        }
+        employees.values().forEach(Employee::clearWorkHours);
         System.out.println("Work hours cleared for all employees.");
     }
 
@@ -341,6 +323,22 @@ public class AttendanceTracker {
         }
     }
 
+    private Employee getEmployee(String employeeName) {
+        Employee employee = employees.get(employeeName);
+        if (employee == null) {
+            System.out.println("Employee not found: " + employeeName);
+        }
+        return employee;
+    }
+
+    private String formatDate(Date date) {
+        if (date == null) {
+            return "N/A";
+        }
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        return sdf.format(date);
+    }
+
     public static void main(String[] args) {
         AttendanceTracker tracker = new AttendanceTracker();
         Scanner userInput = new Scanner(System.in);
@@ -360,6 +358,9 @@ public class AttendanceTracker {
             }
 
             switch (choice) {
+                case 0: // For Add employee
+                    handleAddEmployee(userInput, tracker);
+                    break;
                 case 1:
                     handleClockIn(userInput, tracker);
                     break;
@@ -378,7 +379,7 @@ public class AttendanceTracker {
                 case 6:
                     handleAddWorkHours(userInput, tracker);
                     break;
-                case 7:
+                case 7, 21:
                     handleRemoveWorkHours(userInput, tracker);
                     break;
                 case 8:
@@ -420,16 +421,91 @@ public class AttendanceTracker {
                 case 20:
                     tracker.clearAll();
                     break;
-                case 21:
+                case 22:
+                    handleRemoveAttendance(userInput, tracker);
+                    break;
+                case 23:
+                    handleRemoveAttendanceWithType(userInput, tracker);
+                    break;
+                case 24:
+                    handleRemoveAttendanceWithTypeAndDate(userInput, tracker);
+                    break;
+                case 25:
+                    handleRemoveAttendanceWithTypeDateAndTime(userInput, tracker);
+                    break;
+                case 26:
+                    handleRemoveAttendanceWithDate(userInput, tracker);
+                    break;
+                case 27:
+                    handleRemoveAttendanceWithDateAndTime(userInput, tracker);
+                    break;
+                case 28:
+                    handleRemoveAttendanceWithTypeAndTime(userInput, tracker);
+                    break;
+                case 29: // For Remove employee
+                    handleRemoveEmployee(userInput, tracker);
+                    break;
+                case 30: // For Remove Work Hours
+                    handleRemoveWorkHours(userInput, tracker);
+                    break;
+                case 31:
+                    userInput.close();
+                    System.out.println("Exiting the Attendance Tracker. Goodbye!");
                     System.exit(0);
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter a valid option.");
+                    System.out.println("Invalid choice. Please enter a number between 1 and 26.");
+                    break;
             }
         }
     }
 
+    private static void handleRemoveAttendanceWithTypeAndTime(Scanner userInput, AttendanceTracker tracker) {
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        System.out.print("Enter attendance type (clock in/clock out): ");
+        String type = userInput.nextLine();
+        System.out.print("Enter attendance time (HH:mm:ss): ");
+        String time = userInput.nextLine();
+        tracker.removeAttendance(name, type, time);
+    }
+
+    private static void handleRemoveAttendanceWithDateAndTime(Scanner userInput, AttendanceTracker tracker) {
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        System.out.print("Enter attendance date (yyyy-MM-dd): ");
+        String date = userInput.nextLine();
+        System.out.print("Enter attendance time (HH:mm:ss): ");
+        String time = userInput.nextLine();
+        tracker.removeAttendance(name, date, time);
+    }
+
+    private static void handleRemoveAttendanceWithDate(Scanner userInput, AttendanceTracker tracker) {
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        System.out.print("Enter attendance date (yyyy-MM-dd): ");
+        String date = userInput.nextLine();
+        tracker.removeAttendance(name, date);
+    }
+
+    private static void handleAddEmployee(Scanner userInput, AttendanceTracker tracker) {
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        System.out.print("Enter employee present (true/false): ");
+        boolean present = userInput.nextBoolean();
+        System.out.print("Enter employee last clock in time (yyyy-MM-dd HH:mm:ss): ");
+        String lastClockInTime = userInput.nextLine();
+        System.out.print("Enter employee last clock out time (yyyy-MM-dd HH:mm:ss): ");
+        String lastClockOutTime = userInput.nextLine();
+        System.out.print("Enter employee work hours (yyyy-MM-dd:hours,yyyy-MM-dd:hours,...): ");
+        String workHours = userInput.nextLine();
+        tracker.addEmployee(name, present, lastClockInTime, lastClockOutTime, workHours);
+        System.out.println("Employee added successfully.");
+    }
+
     private static void displayMenu() {
+        System.out.println("\nAttendance Tracker Menu:");
+        System.out.println("0. Add Employee");
         System.out.println("1. Clock In");
         System.out.println("2. Clock Out");
         System.out.println("3. View Attendance");
@@ -439,123 +515,166 @@ public class AttendanceTracker {
         System.out.println("7. Remove Work Hours");
         System.out.println("8. Calculate Total Work Hours");
         System.out.println("9. Calculate Average Work Hours");
-        System.out.println("10. Calculate Total Work Hours for a Month");
-        System.out.println("11. Calculate Average Work Hours for a Month");
-        System.out.println("12. Calculate Total Work Hours for a Year");
-        System.out.println("13. Calculate Average Work Hours for a Year");
+        System.out.println("10. Calculate Total Work Hours for Month");
+        System.out.println("11. Calculate Average Work Hours for Month");
+        System.out.println("12. Calculate Total Work Hours for Year");
+        System.out.println("13. Calculate Average Work Hours for Year");
         System.out.println("14. Remove Employee");
         System.out.println("15. Clear Employees");
-        System.out.println("16. Clear Attendance");
+        System.out.println("16. Clear Attendance for Employee");
         System.out.println("17. Clear All Attendance");
-        System.out.println("18. Clear Work Hours");
+        System.out.println("18. Clear Work Hours for Employee");
         System.out.println("19. Clear All Work Hours");
-        System.out.println("20. Clear All");
-        System.out.println("21. Exit");
+        System.out.println("20. Clear All (Employees, Attendance, Work Hours)");
+        System.out.println("21. Remove Work Hours for Employee");
+        System.out.println("22. Remove Attendance for Employee");
+        System.out.println("23. Remove Attendance for Employee with Type");
+        System.out.println("24. Remove Attendance for Employee with Type and Date");
+        System.out.println("25. Remove Attendance for Employee with Type, Date, and Time");
+        System.out.println("26. Remove Attendance for Employee with Date");
+        System.out.println("27. Remove Attendance for Employee with Date and Time");
+        System.out.println("28. Remove Attendance for Employee with Type and Time");
+        System.out.println("29. Remove Employee");
+        System.out.println("30. Remove Work Hours");
+        System.out.println("31. Exit");
+        System.out.print("Enter your choice: ");
     }
 
     private static void handleClockIn(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to clock in: ");
-        String clockInName = userInput.nextLine();
-        tracker.clockIn(clockInName);
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        tracker.clockIn(name);
     }
 
     private static void handleClockOut(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to clock out: ");
-        String clockOutName = userInput.nextLine();
-
-        tracker.clockOut(clockOutName);
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        tracker.clockOut(name);
     }
 
     private static void handleViewAttendance(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to view attendance: ");
-        String viewAttendanceName = userInput.nextLine();
-        tracker.viewAttendance(viewAttendanceName);
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        tracker.viewAttendance(name);
     }
 
     private static void handleDisplayWorkHours(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to display work hours: ");
-        String displayHoursName = userInput.nextLine();
-        tracker.displayWorkHours(displayHoursName);
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        tracker.displayWorkHours(name);
     }
 
     private static void handleAddWorkHours(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to add work hours: ");
-        String addHoursName = userInput.nextLine();
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
         System.out.print("Enter date (yyyy-MM-dd): ");
         String date = userInput.nextLine();
         System.out.print("Enter hours: ");
         int hours = userInput.nextInt();
-        userInput.nextLine(); // Consume the newline character
-        tracker.addWorkHours(addHoursName, date, hours);
+        tracker.addWorkHours(name, date, hours);
     }
 
     private static void handleRemoveWorkHours(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to remove work hours: ");
-        String removeHoursName = userInput.nextLine();
-        System.out.print("Enter date (yyyy-MM-dd): ");
-        String removeHoursDate = userInput.nextLine();
-        tracker.removeWorkHours(removeHoursName, removeHoursDate);
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        tracker.removeWorkHours(name);
     }
 
     private static void handleCalculateTotalWorkHours(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to calculate total work hours: ");
-        String calculateTotalHoursName = userInput.nextLine();
-        tracker.calculateTotalWorkHours(calculateTotalHoursName);
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        tracker.calculateTotalWorkHours(name);
     }
 
     private static void handleCalculateAverageWorkHours(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to calculate average work hours: ");
-        String calculateAverageHoursName = userInput.nextLine();
-        tracker.calculateAverageWorkHours(calculateAverageHoursName);
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        tracker.calculateAverageWorkHours(name);
     }
 
     private static void handleCalculateTotalWorkHoursForMonth(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to calculate total work hours: ");
-        String calculateTotalHoursMonthName = userInput.nextLine();
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
         System.out.print("Enter month (yyyy-MM): ");
-        String calculateTotalHoursMonth = userInput.nextLine();
-        tracker.calculateTotalWorkHoursForMonth(calculateTotalHoursMonthName, calculateTotalHoursMonth);
+        String month = userInput.nextLine();
+        tracker.calculateTotalWorkHoursForMonth(name, month);
     }
 
     private static void handleCalculateAverageWorkHoursForMonth(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to calculate average work hours: ");
-        String calculateAverageHoursMonthName = userInput.nextLine();
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
         System.out.print("Enter month (yyyy-MM): ");
-        String calculateAverageHoursMonth = userInput.nextLine();
-        tracker.calculateAverageWorkHoursForMonth(calculateAverageHoursMonthName, calculateAverageHoursMonth);
+        String month = userInput.nextLine();
+        tracker.calculateAverageWorkHoursForMonth(name, month);
     }
 
     private static void handleCalculateTotalWorkHoursForYear(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to calculate total work hours: ");
-        String calculateTotalHoursYearName = userInput.nextLine();
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
         System.out.print("Enter year (yyyy): ");
-        String calculateTotalHoursYear = userInput.nextLine();
-        tracker.calculateTotalWorkHoursForYear(calculateTotalHoursYearName, calculateTotalHoursYear);
+        String year = userInput.nextLine();
+        tracker.calculateTotalWorkHoursForYear(name, year);
     }
 
     private static void handleCalculateAverageWorkHoursForYear(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to calculate average work hours: ");
-        String calculateAverageHoursYearName = userInput.nextLine();
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
         System.out.print("Enter year (yyyy): ");
-        String calculateAverageHoursYear = userInput.nextLine();
-        tracker.calculateAverageWorkHoursForYear(calculateAverageHoursYearName, calculateAverageHoursYear);
+        String year = userInput.nextLine();
+        tracker.calculateAverageWorkHoursForYear(name, year);
     }
 
     private static void handleRemoveEmployee(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to remove: ");
-        String removeEmployeeName = userInput.nextLine();
-        tracker.removeEmployee(removeEmployeeName);
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        tracker.removeEmployee(name);
     }
 
     private static void handleClearAttendance(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to clear attendance: ");
-        String clearAttendanceName = userInput.nextLine();
-        tracker.clearAttendance(clearAttendanceName);
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        tracker.clearAttendance(name);
     }
 
     private static void handleClearWorkHours(Scanner userInput, AttendanceTracker tracker) {
-        System.out.print("Enter employee name to clear work hours: ");
-        String clearHoursName = userInput.nextLine();
-        tracker.clearWorkHours(clearHoursName);
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        tracker.clearWorkHours(name);
+    }
+
+    private static void handleRemoveAttendance(Scanner userInput, AttendanceTracker tracker) {
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        tracker.removeAttendance(name);
+    }
+
+    private static void handleRemoveAttendanceWithType(Scanner userInput, AttendanceTracker tracker) {
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        System.out.print("Enter attendance type (clock in/clock out): ");
+        String type = userInput.nextLine();
+        tracker.removeAttendance(name, type);
+    }
+
+    private static void handleRemoveAttendanceWithTypeAndDate(Scanner userInput, AttendanceTracker tracker) {
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        System.out.print("Enter attendance type (clock in/clock out): ");
+        String type = userInput.nextLine();
+        System.out.print("Enter attendance date (yyyy-MM-dd): ");
+        String date = userInput.nextLine();
+        tracker.removeAttendance(name, type, date);
+    }
+
+    private static void handleRemoveAttendanceWithTypeDateAndTime(Scanner userInput, AttendanceTracker tracker) {
+        System.out.print("Enter employee name: ");
+        String name = userInput.nextLine();
+        System.out.print("Enter attendance type (clock in/clock out): ");
+        String type = userInput.nextLine();
+        System.out.print("Enter attendance date (yyyy-MM-dd): ");
+        String date = userInput.nextLine();
+        System.out.print("Enter attendance time (HH:mm:ss): ");
+        String time = userInput.nextLine();
+        tracker.removeAttendance(name, type, date, time);
     }
 }
