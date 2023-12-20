@@ -1,21 +1,49 @@
+import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class AttendanceTracker {
     private final Map<String, Employee> employees;
+    private static final String DATA_FILE = "attendance_data.txt";
 
     public AttendanceTracker() {
         this.employees = new HashMap<>();
+        readDataFromFile();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void readDataFromFile() {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(DATA_FILE))) {
+            employees.clear();
+            employees.putAll((Map<String, Employee>) ois.readObject());
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Error reading data from file: " + e.getMessage());
+        }
+    }
+
+    private void writeDataToFile() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(DATA_FILE))) {
+            oos.writeObject(employees);
+        } catch (IOException e) {
+            System.out.println("Error writing data to file: " + e.getMessage());
+        }
     }
 
     public void addEmployee(String name, boolean present, String lastClockInTime, String lastClockOutTime, String workHours) {
-        Employee employee = new Employee(name);
-        employee.setPresent(present);
-        employee.setLastClockInTime(parseDate(lastClockInTime));
-        employee.setLastClockOutTime(parseDate(lastClockOutTime));
+        Employee employee = new Employee(
+                name,
+                present,
+                parseDate(lastClockInTime),
+                parseDate(lastClockOutTime),
+                new HashMap<>()
+        );
+
         parseWorkHours(workHours, employee);
         employees.put(name, employee);
+        writeDataToFile();
     }
+
+
 
     private void parseWorkHours(String workHours, Employee employee) {
         if (workHours.equalsIgnoreCase("N/A")) {
@@ -249,6 +277,10 @@ public class AttendanceTracker {
         clearEmployees();
         clearAllAttendance();
         clearAllWorkHours();
+        System.out.println("All data cleared.");
+
+        // Add this line to clear the data from the file
+        writeDataToFile();
     }
 
     public void removeWorkHours(String removeHoursName) {
@@ -454,7 +486,7 @@ public class AttendanceTracker {
                     System.exit(0);
                     break;
                 default:
-                    System.out.println("Invalid choice. Please enter a number between 1 and 26.");
+                    System.out.println("Invalid choice. Please enter a number between 1 and 31.");
                     break;
             }
         }
@@ -493,12 +525,17 @@ public class AttendanceTracker {
         String name = userInput.nextLine();
         System.out.print("Enter employee present (true/false): ");
         boolean present = userInput.nextBoolean();
+
+        // Consume the newline character
+        userInput.nextLine();
+
         System.out.print("Enter employee last clock in time (yyyy-MM-dd HH:mm:ss): ");
         String lastClockInTime = userInput.nextLine();
         System.out.print("Enter employee last clock out time (yyyy-MM-dd HH:mm:ss): ");
         String lastClockOutTime = userInput.nextLine();
         System.out.print("Enter employee work hours (yyyy-MM-dd:hours,yyyy-MM-dd:hours,...): ");
         String workHours = userInput.nextLine();
+
         tracker.addEmployee(name, present, lastClockInTime, lastClockOutTime, workHours);
         System.out.println("Employee added successfully.");
     }

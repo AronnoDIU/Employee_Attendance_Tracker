@@ -1,23 +1,31 @@
-import java.text.SimpleDateFormat;
+import java.io.Serializable;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Employee {
+public class Employee implements Serializable {
     private final String name;
     private boolean present;
     private Date lastClockInTime;
     private Date lastClockOutTime;
     private final Map<String, Integer> workHours;
 
-    public Employee(String name) {
+    public Employee(String name, boolean present, Date lastClockInTime, Date lastClockOutTime, Map<String, Integer> workHours) {
         this.name = name;
-        this.present = false;
-        this.workHours = new HashMap<>();
+        this.present = present;
+        this.lastClockInTime = lastClockInTime;
+        this.lastClockOutTime = lastClockOutTime;
+        this.workHours = new HashMap<>(workHours);
     }
 
-    public String getName() {
-        return name;
+    public void removeWorkHours(String date) {
+        workHours.remove(date);
+    }
+
+
+    public void setWorkHours(Map<String, Integer> workHours) {
+        this.workHours.clear();
+        this.workHours.putAll(workHours);
     }
 
     public boolean isPresent() {
@@ -52,16 +60,7 @@ public class Employee {
         workHours.put(date, hours);
     }
 
-    public void removeWorkHours(String date) {
-        workHours.remove(date);
-    }
-
     public void clearWorkHours() {
         workHours.clear();
-    }
-
-    public void setWorkHours(Map<String, Integer> workHours) {
-        this.workHours.clear();
-        this.workHours.putAll(workHours);
     }
 }
