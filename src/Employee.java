@@ -1,18 +1,19 @@
-import java.util.HashMap; // For workHours HashMap in Employee class
-import java.util.Map; // For workHours map in Employee class
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
-class Employee {
-    private final String name; // Name of employee (immutable)
-    private boolean isPresent; // Whether an employee is present or not
-    private String lastClockInTime; // Time of last clock in
-    private String lastClockOutTime; // Time of last clock out
-    private final Map<String, Integer> workHours; // Map of work hours for each day
+public class Employee {
+    private final String name;
+    private boolean present;
+    private Date lastClockInTime;
+    private Date lastClockOutTime;
+    private final Map<String, Integer> workHours;
+
     public Employee(String name) {
         this.name = name;
-        this.isPresent = false; // By default, employee is not present
-        this.lastClockInTime = null; // By default, employee has not clocked in
-        this.lastClockOutTime = null; // By default, employee has not clocked out
-        this.workHours = new HashMap<>(); // Initialize workHours map
+        this.present = false;
+        this.workHours = new HashMap<>();
     }
 
     public String getName() {
@@ -20,26 +21,26 @@ class Employee {
     }
 
     public boolean isPresent() {
-        return isPresent;
+        return present;
     }
 
     public void setPresent(boolean present) {
-        isPresent = present;
+        this.present = present;
     }
 
-    public String getLastClockInTime() {
+    public Date getLastClockInTime() {
         return lastClockInTime;
     }
 
-    public void setLastClockInTime(String lastClockInTime) {
+    public void setLastClockInTime(Date lastClockInTime) {
         this.lastClockInTime = lastClockInTime;
     }
 
-    public String getLastClockOutTime() {
+    public Date getLastClockOutTime() {
         return lastClockOutTime;
     }
 
-    public void setLastClockOutTime(String lastClockOutTime) {
+    public void setLastClockOutTime(Date lastClockOutTime) {
         this.lastClockOutTime = lastClockOutTime;
     }
 
@@ -49,5 +50,13 @@ class Employee {
 
     public void addWorkHours(String date, int hours) {
         workHours.put(date, hours);
+    }
+
+    public void removeWorkHours(String date) {
+        workHours.remove(date);
+    }
+
+    public void clearWorkHours() {
+        workHours.clear();
     }
 }
